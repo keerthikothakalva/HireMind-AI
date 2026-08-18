@@ -24,7 +24,7 @@ function Dashboard() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/interview/history?userEmail=${encodeURIComponent(
+        `https://hiremind-ai-yqdp.onrender.com/api/interview/history?userEmail=${encodeURIComponent(
           userEmail
         )}`,
         {

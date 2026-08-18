@@ -71,7 +71,7 @@ function InterviewSetup() {
       console.log("==========");
 
       const response = await fetch(
-        "http://localhost:5000/api/interview/questions",
+        "https://hiremind-ai-yqdp.onrender.com/api/interview/questions",
         {
           method: "POST",
           body: formData,

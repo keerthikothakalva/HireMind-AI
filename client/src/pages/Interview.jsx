@@ -297,7 +297,7 @@ function Interview() {
 
 
       const response = await fetch(
-        "http://localhost:5000/api/interview/evaluate",
+        "https://hiremind-ai-yqdp.onrender.com/api/interview/evaluate",
         {
           method: "POST",
 

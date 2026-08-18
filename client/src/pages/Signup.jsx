@@ -59,7 +59,7 @@ function Signup() {
       setLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/auth/signup",
+        "https://hiremind-ai-yqdp.onrender.com/api/auth/signup",
         {
           method: "POST",
 
