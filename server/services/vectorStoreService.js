@@ -19,42 +19,83 @@ const storeResumeEmbeddings = async ({
     throw new Error("Resume text is required.");
   }
 
-  // 1. Split resume into chunks
+  const normalizedEmail = userEmail
+    .toLowerCase()
+    .trim();
+
+  const normalizedResumeId = String(resumeId).trim();
+
+  
   const chunks = await splitResumeText(resumeText);
 
-  if (!chunks.length) {
+  if (!chunks || chunks.length === 0) {
     throw new Error("No resume chunks were created.");
   }
 
-  // 2. Generate embeddings for every chunk
-  const texts = chunks.map((chunk) => chunk.text);
+  console.log(
+    `Created ${chunks.length} resume chunks.`
+  );
+
+  
+  const texts = chunks.map(
+    (chunk) => chunk.text
+  );
 
   const vectors = await generateEmbeddings(texts);
 
-  if (vectors.length !== chunks.length) {
-    throw new Error("Embedding count does not match chunk count.");
+  if (
+    !vectors ||
+    vectors.length !== chunks.length
+  ) {
+    throw new Error(
+      "Embedding count does not match chunk count."
+    );
   }
 
-  // 3. Remove previous chunks for this resume
+  console.log(
+    `Generated ${vectors.length} embeddings.`
+  );
+
+ 
   await ResumeChunk.deleteMany({
-    userEmail: userEmail.toLowerCase(),
-    resumeId,
+    userEmail: normalizedEmail,
+    resumeId: normalizedResumeId,
   });
 
-  // 4. Prepare MongoDB documents
-  const documents = chunks.map((chunk, index) => ({
-    userEmail: userEmail.toLowerCase(),
-    resumeId,
-    chunkIndex: chunk.chunkIndex,
-    text: chunk.text,
-    embedding: vectors[index],
-  }));
+  
+  const documents = chunks.map(
+    (chunk, index) => ({
+      userEmail: normalizedEmail,
 
-  // 5. Save chunks + vectors
-  const savedChunks = await ResumeChunk.insertMany(documents);
+      resumeId: normalizedResumeId,
+
+      chunkIndex:
+        chunk.chunkIndex ?? index,
+
+      text: chunk.text,
+
+      embedding: vectors[index],
+    })
+  );
+
+ 
+  const savedChunks =
+    await ResumeChunk.insertMany(
+      documents
+    );
 
   console.log(
     `Stored ${savedChunks.length} resume chunks with embeddings.`
+  );
+
+  console.log(
+    "Stored resume:",
+    normalizedResumeId
+  );
+
+  console.log(
+    "Stored user:",
+    normalizedEmail
   );
 
   return savedChunks;
