@@ -1,12 +1,23 @@
 const {
-  generateInterviewQuestions,
   evaluateInterview,
 } = require("../services/geminiService");
 
+const {
+  storeResumeEmbeddings,
+} = require("../services/vectorStoreService");
+
+const {
+  generatePersonalizedQuestions,
+} = require("../services/ragService");
+
 const Interview = require("../models/InterviewModel");
+
 const { PDFParse } = require("pdf-parse");
 
 const mammoth = require("mammoth");
+
+const crypto = require("crypto");
+
 
 const extractResumeText = async (file) => {
   if (!file) {
@@ -41,7 +52,6 @@ const extractResumeText = async (file) => {
     }
   }
 
-
   if (fileName.endsWith(".docx")) {
     const result = await mammoth.extractRawText({
       buffer: file.buffer,
@@ -69,21 +79,22 @@ const getInterviewQuestions = async (req, res) => {
       role,
       experience,
       jobDescription = "",
+      userEmail,
     } = req.body || {};
 
     const resumeFile = req.file;
 
-    console.log("========");
+    console.log("======");
     console.log("INTERVIEW REQUEST");
     console.log("Role:", role);
     console.log("Experience:", experience);
     console.log("Job Description:", jobDescription);
+    console.log("User Email:", userEmail);
     console.log(
       "Resume:",
       resumeFile?.originalname || "No resume"
     );
     console.log("=====");
-
 
     if (!role) {
       return res.status(400).json({
@@ -96,6 +107,13 @@ const getInterviewQuestions = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Experience level is required.",
+      });
+    }
+
+    if (!userEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "User email is required.",
       });
     }
 
@@ -118,20 +136,41 @@ const getInterviewQuestions = async (req, res) => {
       "characters"
     );
 
-    console.log("Generating interview questions...");
+    const resumeId = crypto.randomUUID();
 
-    const questions = await generateInterviewQuestions({
-      role,
-      experience,
+    console.log("Resume ID:", resumeId);
+
+    console.log(
+      "Creating resume chunks and embeddings..."
+    );
+
+    await storeResumeEmbeddings({
+      userEmail,
+      resumeId,
       resumeText,
-      jobDescription,
     });
 
+    console.log(
+      "Resume chunks and embeddings stored successfully."
+    );
+
+    console.log(
+      "Generating personalized questions using RAG..."
+    );
+
+    const ragResult =
+      await generatePersonalizedQuestions({
+        userEmail,
+        resumeId,
+        role,
+        experience,
+        jobDescription,
+      });
 
     if (
-      !questions ||
-      !Array.isArray(questions) ||
-      questions.length === 0
+      !ragResult ||
+      !Array.isArray(ragResult.questions) ||
+      ragResult.questions.length === 0
     ) {
       return res.status(500).json({
         success: false,
@@ -139,9 +178,15 @@ const getInterviewQuestions = async (req, res) => {
           "No interview questions were generated.",
       });
     }
+    const questions = ragResult.questions.map(
+      (item) =>
+        typeof item === "string"
+          ? item
+          : item.question
+    );
 
     console.log(
-      "Questions generated:",
+      "RAG questions generated:",
       questions.length
     );
 
@@ -149,17 +194,21 @@ const getInterviewQuestions = async (req, res) => {
       success: true,
       questions,
       resumeText,
+      resumeId,
     });
   } catch (error) {
     console.error(
-      "========="
+      "====="
     );
+
     console.error(
       "INTERVIEW QUESTIONS ERROR:"
     );
+
     console.error(error);
+
     console.error(
-      "=========="
+      "====="
     );
 
     return res.status(500).json({
@@ -170,7 +219,6 @@ const getInterviewQuestions = async (req, res) => {
     });
   }
 };
-
 
 const submitInterview = async (req, res) => {
   try {
@@ -184,7 +232,9 @@ const submitInterview = async (req, res) => {
       answers,
     } = req.body || {};
 
-    console.log("========== INTERVIEW EVALUATION ==========");
+    console.log(
+      "INTERVIEW EVALUATION"
+    );
 
     if (!experience) {
       return res.status(400).json({
@@ -225,14 +275,22 @@ const submitInterview = async (req, res) => {
       answers,
     });
 
-    console.log("Interview evaluated successfully.");
-    console.log("Evaluation results:", results);
+    console.log(
+      "Interview evaluated successfully."
+    );
+
+    console.log(
+      "Evaluation results:",
+      results
+    );
 
     let interview = null;
 
     if (userEmail) {
       interview = await Interview.create({
-        userEmail: userEmail.toLowerCase().trim(),
+        userEmail: userEmail
+          .toLowerCase()
+          .trim(),
 
         role: role || "",
 
@@ -251,7 +309,9 @@ const submitInterview = async (req, res) => {
           Number(results.communication) || 0,
 
         technicalKnowledge:
-          Number(results.technicalKnowledge) || 0,
+          Number(
+            results.technicalKnowledge
+          ) || 0,
 
         problemSolving:
           Number(results.problemSolving) || 0,
@@ -273,7 +333,9 @@ const submitInterview = async (req, res) => {
             : [],
 
         areasToImprove:
-          Array.isArray(results.areasToImprove)
+          Array.isArray(
+            results.areasToImprove
+          )
             ? results.areasToImprove
             : [],
       });
@@ -284,6 +346,7 @@ const submitInterview = async (req, res) => {
       );
     }
 
+    
     return res.status(200).json({
       success: true,
 
@@ -292,7 +355,6 @@ const submitInterview = async (req, res) => {
       interviewId:
         interview?._id?.toString() || null,
     });
-
   } catch (error) {
     console.error(
       "====="
@@ -305,7 +367,7 @@ const submitInterview = async (req, res) => {
     console.error(error);
 
     console.error(
-      "====="
+      "======"
     );
 
     return res.status(500).json({
@@ -318,28 +380,33 @@ const submitInterview = async (req, res) => {
   }
 };
 
+
 const getInterviewHistory = async (req, res) => {
   try {
     const { userEmail } = req.query;
+
     if (!userEmail) {
       return res.status(400).json({
         success: false,
         message: "User email is required",
       });
     }
+
     const interviews = await Interview.find({
-      userEmail: userEmail.toLowerCase().trim(),
+      userEmail: userEmail
+        .toLowerCase()
+        .trim(),
     })
       .sort({ createdAt: -1 })
       .select(
         "role experience overallScore communication technicalKnowledge problemSolving confidence summary strengths areasToImprove techStacks createdAt"
       )
       .lean();
+
     return res.status(200).json({
       success: true,
       interviews,
     });
-
   } catch (error) {
     console.error(
       "GET INTERVIEW HISTORY ERROR:",
@@ -354,6 +421,8 @@ const getInterviewHistory = async (req, res) => {
     });
   }
 };
+
+
 module.exports = {
   getInterviewQuestions,
   submitInterview,
