@@ -12,7 +12,7 @@ function InterviewSetup() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const userEmail = localStorage.getItem("userEmail");
 
   const roles = [
     "Frontend Developer",
@@ -58,7 +58,7 @@ function InterviewSetup() {
       );
 
       formData.append("resume", resume);
-
+      formData.append("userEmail", userEmail);
       console.log("==========");
       console.log("Starting interview...");
       console.log("Role:", role);
