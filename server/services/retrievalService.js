@@ -29,9 +29,7 @@ const retrieveRelevantChunks = async ({
   const normalizedResumeId =
     String(resumeId).trim();
 
-  console.log(
-    "===== VECTOR SEARCH ====="
-  );
+  console.log("===== VECTOR SEARCH =====");
 
   console.log(
     "Searching user:",
@@ -43,7 +41,6 @@ const retrieveRelevantChunks = async ({
     normalizedResumeId
   );
 
-  
   const queryEmbedding =
     await generateEmbedding(query);
 
@@ -62,7 +59,7 @@ const retrieveRelevantChunks = async ({
     queryEmbedding.length
   );
 
-  const results =
+  const vectorResults =
     await mongoose.connection
       .collection("resumechunks")
       .aggregate([
@@ -75,26 +72,11 @@ const retrieveRelevantChunks = async ({
             queryVector: queryEmbedding,
 
             numCandidates: Math.max(
-              50,
+              100,
               limit * 20
             ),
 
-            limit,
-
-            filter: {
-              $and: [
-                {
-                  userEmail: {
-                    $eq: normalizedEmail,
-                  },
-                },
-                {
-                  resumeId: {
-                    $eq: normalizedResumeId,
-                  },
-                },
-              ],
-            },
+            limit: 50,
           },
         },
 
@@ -111,8 +93,7 @@ const retrieveRelevantChunks = async ({
             chunkIndex: 1,
 
             score: {
-              $meta:
-                "vectorSearchScore",
+              $meta: "vectorSearchScore",
             },
           },
         },
@@ -120,7 +101,21 @@ const retrieveRelevantChunks = async ({
       .toArray();
 
   console.log(
-    "Vector search results:",
+    "Raw vector search results:",
+    vectorResults.length
+  );
+
+  const results = vectorResults
+    .filter(
+      (chunk) =>
+        chunk.userEmail === normalizedEmail &&
+        String(chunk.resumeId).trim() ===
+          normalizedResumeId
+    )
+    .slice(0, limit);
+
+  console.log(
+    "Filtered vector search results:",
     results.length
   );
 
@@ -129,11 +124,14 @@ const retrieveRelevantChunks = async ({
       "Top similarity score:",
       results[0].score
     );
+
+    console.log(
+      "First matching chunk:",
+      results[0].chunkIndex
+    );
   }
 
-  console.log(
-    "========="
-  );
+  console.log("=========");
 
   return results;
 };
