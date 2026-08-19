@@ -7,11 +7,10 @@ function Dashboard() {
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const userEmail = localStorage.getItem("hiremindUser");
+  const userEmail = localStorage.getItem("userEmail");
 
-  const userName = userEmail
-    ? userEmail.split("@")[0]
-    : "User";
+const userName =
+  localStorage.getItem("hiremindUserName") || "User";
 
   useEffect(() => {
   const fetchInterviewHistory = async () => {
