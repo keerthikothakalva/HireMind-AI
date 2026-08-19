@@ -190,7 +190,7 @@ function Interview() {
 
   const getUserEmail = () => {
     const storedUser =
-      localStorage.getItem("hiremindUser");
+      localStorage.getItem("userEmailS");
 
     if (!storedUser) {
       return "";

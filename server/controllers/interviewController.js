@@ -232,9 +232,21 @@ const submitInterview = async (req, res) => {
       answers,
     } = req.body || {};
 
-    console.log(
-      "INTERVIEW EVALUATION"
-    );
+    console.log("======");
+    console.log("INTERVIEW EVALUATION");
+    console.log("User Email:", userEmail);
+    console.log("Role:", role);
+    console.log("Experience:", experience);
+    console.log("Questions:", questions?.length);
+    console.log("Answers:", answers?.length);
+    console.log("======");
+
+    if (!userEmail || !userEmail.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "User email is required.",
+      });
+    }
 
     if (!experience) {
       return res.status(400).json({
@@ -284,81 +296,103 @@ const submitInterview = async (req, res) => {
       results
     );
 
-    let interview = null;
-
-    if (userEmail) {
-      interview = await Interview.create({
-        userEmail: userEmail
-          .toLowerCase()
-          .trim(),
-
-        role: role || "",
-
-        resumeText: resumeText.trim(),
-
-        experience: experience.trim(),
-
-        questions,
-
-        answers,
-
-        overallScore:
-          Number(results.overallScore) || 0,
-
-        communication:
-          Number(results.communication) || 0,
-
-        technicalKnowledge:
-          Number(
-            results.technicalKnowledge
-          ) || 0,
-
-        problemSolving:
-          Number(results.problemSolving) || 0,
-
-        confidence:
-          Number(results.confidence) || 0,
-
-        techStacks:
-          Array.isArray(results.techStacks)
-            ? results.techStacks
-            : [],
-
-        summary:
-          results.summary || "",
-
-        strengths:
-          Array.isArray(results.strengths)
-            ? results.strengths
-            : [],
-
-        areasToImprove:
-          Array.isArray(
-            results.areasToImprove
-          )
-            ? results.areasToImprove
-            : [],
-      });
-
-      console.log(
-        "Interview saved successfully:",
-        interview._id
-      );
-    }
-
     
+    const normalizedEmail = userEmail
+      .toLowerCase()
+      .trim();
+
+    console.log(
+      "Saving interview to MongoDB..."
+    );
+
+    const interview = await Interview.create({
+      userEmail: normalizedEmail,
+
+      role: role || "",
+
+      resumeText: resumeText.trim(),
+
+      experience: experience.trim(),
+
+      questions,
+
+      answers,
+
+      overallScore:
+        Number(results.overallScore) || 0,
+
+      communication:
+        Number(results.communication) || 0,
+
+      technicalKnowledge:
+        Number(
+          results.technicalKnowledge
+        ) || 0,
+
+      problemSolving:
+        Number(results.problemSolving) || 0,
+
+      confidence:
+        Number(results.confidence) || 0,
+
+      techStacks:
+        Array.isArray(results.techStacks)
+          ? results.techStacks
+          : [],
+
+      summary:
+        results.summary || "",
+
+      strengths:
+        Array.isArray(results.strengths)
+          ? results.strengths
+          : [],
+
+      areasToImprove:
+        Array.isArray(results.areasToImprove)
+          ? results.areasToImprove
+          : [],
+    });
+
+    console.log(
+      "================"
+    );
+
+    console.log(
+      "INTERVIEW SAVED SUCCESSFULLY"
+    );
+
+    console.log(
+      "Interview ID:",
+      interview._id.toString()
+    );
+
+    console.log(
+      "User Email:",
+      interview.userEmail
+    );
+
+    console.log(
+      "Score:",
+      interview.overallScore
+    );
+
+    console.log(
+      "================="
+    );
+
     return res.status(200).json({
       success: true,
 
       results,
 
       interviewId:
-        interview?._id?.toString() || null,
+        interview._id.toString(),
     });
+
   } catch (error) {
-    console.error(
-      "====="
-    );
+
+    console.error("=====");
 
     console.error(
       "INTERVIEW EVALUATION ERROR:"
@@ -366,9 +400,7 @@ const submitInterview = async (req, res) => {
 
     console.error(error);
 
-    console.error(
-      "======"
-    );
+    console.error("======");
 
     return res.status(500).json({
       success: false,
