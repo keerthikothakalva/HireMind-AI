@@ -1,8 +1,37 @@
 const mongoose = require("mongoose");
-
 const {
   generateEmbedding,
 } = require("./embeddingService");
+
+const cosineSimilarity = (a, b) => {
+  if (!Array.isArray(a) || !Array.isArray(b)) {
+    return -1;
+  }
+
+  if (a.length !== b.length) {
+    return -1;
+  }
+
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
+  }
+
+  if (magnitudeA === 0 || magnitudeB === 0) {
+    return -1;
+  }
+
+  return (
+    dotProduct /
+    (Math.sqrt(magnitudeA) *
+      Math.sqrt(magnitudeB))
+  );
+};
 
 const retrieveRelevantChunks = async ({
   userEmail,
@@ -41,6 +70,7 @@ const retrieveRelevantChunks = async ({
     normalizedResumeId
   );
 
+
   const queryEmbedding =
     await generateEmbedding(query);
 
@@ -59,24 +89,119 @@ const retrieveRelevantChunks = async ({
     queryEmbedding.length
   );
 
-  const vectorResults =
-    await mongoose.connection
-      .collection("resumechunks")
+  const collection =
+    mongoose.connection.collection(
+      "resumechunks"
+    );
+
+  const resumeChunks =
+    await collection
+      .find({
+        userEmail: normalizedEmail,
+        resumeId: normalizedResumeId,
+      })
+      .project({
+        _id: 1,
+        userEmail: 1,
+        resumeId: 1,
+        text: 1,
+        chunkIndex: 1,
+        embedding: 1,
+      })
+      .toArray();
+
+  console.log(
+    "Direct resume chunk count:",
+    resumeChunks.length
+  );
+
+  if (resumeChunks.length > 0) {
+    const rankedChunks =
+      resumeChunks
+        .map((chunk) => ({
+          ...chunk,
+          score: cosineSimilarity(
+            queryEmbedding,
+            chunk.embedding
+          ),
+        }))
+        .filter(
+          (chunk) =>
+            typeof chunk.score === "number" &&
+            chunk.score >= 0
+        )
+        .sort(
+          (a, b) =>
+            b.score - a.score
+        )
+        .slice(0, limit);
+
+    console.log(
+      "Fallback similarity results:",
+      rankedChunks.length
+    );
+
+    if (rankedChunks.length > 0) {
+      console.log(
+        "Top similarity score:",
+        rankedChunks[0].score
+      );
+    }
+
+    console.log("=========");
+
+    return rankedChunks.map(
+      (chunk) => ({
+        userEmail:
+          chunk.userEmail,
+
+        resumeId:
+          chunk.resumeId,
+
+        text:
+          chunk.text,
+
+        chunkIndex:
+          chunk.chunkIndex,
+
+        score:
+          chunk.score,
+      })
+    );
+  }
+
+  console.log(
+    "No exact resume chunks found."
+  );
+
+  console.log(
+    "Trying Atlas Vector Search..."
+  );
+
+  const results =
+    await collection
       .aggregate([
         {
           $vectorSearch: {
-            index: "resume_vector_index",
+            index:
+              "resume_vector_index",
 
-            path: "embedding",
+            path:
+              "embedding",
 
-            queryVector: queryEmbedding,
+            queryVector:
+              queryEmbedding,
 
-            numCandidates: Math.max(
-              100,
-              limit * 20
+            numCandidates:
+              Math.max(
+                100,
+                limit * 20
+              ),
+
+            limit: Math.max(
+              20,
+              limit
             ),
-
-            limit: 50,
           },
         },
 
@@ -93,7 +218,8 @@ const retrieveRelevantChunks = async ({
             chunkIndex: 1,
 
             score: {
-              $meta: "vectorSearchScore",
+              $meta:
+                "vectorSearchScore",
             },
           },
         },
@@ -102,38 +228,41 @@ const retrieveRelevantChunks = async ({
 
   console.log(
     "Raw vector search results:",
-    vectorResults.length
-  );
-
-  const results = vectorResults
-    .filter(
-      (chunk) =>
-        chunk.userEmail === normalizedEmail &&
-        String(chunk.resumeId).trim() ===
-          normalizedResumeId
-    )
-    .slice(0, limit);
-
-  console.log(
-    "Filtered vector search results:",
     results.length
   );
 
-  if (results.length > 0) {
-    console.log(
-      "Top similarity score:",
-      results[0].score
+  const filteredResults =
+    results.filter(
+      (chunk) =>
+        String(chunk.userEmail)
+          .toLowerCase()
+          .trim() ===
+          normalizedEmail &&
+        String(chunk.resumeId)
+          .trim() ===
+          normalizedResumeId
     );
 
+  console.log(
+    "Filtered vector search results:",
+    filteredResults.length
+  );
+
+  if (
+    filteredResults.length > 0
+  ) {
     console.log(
-      "First matching chunk:",
-      results[0].chunkIndex
+      "Top similarity score:",
+      filteredResults[0].score
     );
   }
 
   console.log("=========");
 
-  return results;
+  return filteredResults.slice(
+    0,
+    limit
+  );
 };
 
 module.exports = {
