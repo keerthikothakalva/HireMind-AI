@@ -6,16 +6,21 @@ function Navbar() {
 
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const userEmail = localStorage.getItem("hiremindUser");
+  
+  const userEmail = localStorage.getItem("userEmail");
+  const userName =
+    localStorage.getItem("hiremindUserName") || "User";
+
   const isLoggedIn = !!userEmail;
 
-  const userName = userEmail
-    ? userEmail.split("@")[0]
-    : "User";
-
   const handleLogout = () => {
-    localStorage.removeItem("hiremindUser");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("hiremindUserName");
+    localStorage.removeItem("hiremindUserId");
+    localStorage.removeItem("hiremindRememberMe");
+
     setShowDropdown(false);
+
     navigate("/login");
   };
 
@@ -50,10 +55,8 @@ function Navbar() {
           className="collapse navbar-collapse"
           id="hireNavbar"
         >
-
           {isLoggedIn ? (
             <>
-
               <div className="navbar-center"></div>
 
               <div className="navbar-actions">
@@ -99,7 +102,6 @@ function Navbar() {
                         </span>
                       </Link>
 
-                      
                       <button
                         type="button"
                         className="profile-menu-item logout-menu-item"
@@ -121,7 +123,6 @@ function Navbar() {
             </>
           ) : (
             <>
-         
               <ul className="navbar-nav mx-auto mb-2 mb-lg-0">
 
                 <li className="nav-item">
@@ -172,7 +173,6 @@ function Navbar() {
               </div>
             </>
           )}
-
         </div>
       </div>
     </nav>
