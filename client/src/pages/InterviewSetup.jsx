@@ -36,9 +36,14 @@ function InterviewSetup() {
     "2–3 Years",
   ];
   const handleStartInterview = async () => {
-    setError("");
+  setError("");
 
-    if (!role || !experience || !resume) {
+  if (!userEmail) {
+    setError("User email not found. Please login again.");
+    return;
+  }
+
+  if (!role || !experience || !resume) {
       setError(
         "Please select target role, experience level and upload your resume."
       );

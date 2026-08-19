@@ -48,9 +48,9 @@ function Login() {
       }
 
       localStorage.setItem(
-        "hiremindUser",
-        data.user.email
-      );
+  "userEmail",
+  data.user.email
+);
 
       localStorage.setItem(
         "hiremindUserName",
