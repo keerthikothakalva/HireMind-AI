@@ -4,11 +4,10 @@ import "../styles/Profile.css";
 function Profile() {
   const [interviews, setInterviews] = useState([]);
 
-  const userEmail = localStorage.getItem("hiremindUser");
+  const userEmail = localStorage.getItem("userEmail");
 
-  const userName = userEmail
-    ? userEmail.split("@")[0]
-    : "User";
+const userName =
+  localStorage.getItem("hiremindUserName") || "User";
 
   useEffect(() => {
     const fetchInterviews = async () => {
