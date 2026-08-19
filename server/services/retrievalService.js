@@ -82,19 +82,11 @@ const retrieveRelevantChunks = async ({
             limit,
 
             filter: {
-              $and: [
-                {
-                  userEmail: {
-                    $eq: normalizedEmail,
-                  },
-                },
-                {
-                  resumeId: {
-                    $eq: normalizedResumeId,
-                  },
-                },
-              ],
-            },
+  $and: [
+    { userEmail: { $eq: normalizedEmail } },
+    { resumeId: { $eq: normalizedResumeId } }
+  ]
+},
           },
         },
 
