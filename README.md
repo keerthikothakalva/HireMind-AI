@@ -195,44 +195,59 @@ This enables candidates to return later and review their previous interview resu
 
 # 🏗️ System Architecture
 
-┌──────────────────────────────┐
-│        React + Vite          │
-│          Frontend            │
-└──────────────┬───────────────┘
-               │
-               │ REST APIs
-               ▼
-┌──────────────────────────────┐
-│      Node.js + Express       │
-│           Backend            │
-└───────┬──────────┬───────────┘
-        │          │
-        │          │
-        ▼          ▼
-┌─────────────┐  ┌──────────────────┐
-│  MongoDB    │  │   Gemini AI      │
-│   Atlas     │  │  Generation +    │
-│             │  │   Evaluation     │
-└──────┬──────┘  └──────────────────┘
-       │
-       ▼
-┌──────────────────────────────┐
-│ Resume / RAG Processing      │
-│                              │
-│ Resume Parser                │
-│ Text Chunker                 │
-│ Embeddings                   │
-│ Retrieval Service            │
-│ Vector Store                 │
-└──────────────┬───────────────┘
-               │
-               ▼
-       Relevant Resume Context
-               │
-               ▼
-          Gemini AI
-
-
+┌──────────────────────────────────────────────┐
+│              React + Vite Frontend           │
+│                                              │
+│  Login • Dashboard • Interview • Results     │
+│  Profile • Resume Upload • Voice Input       │
+└──────────────────────┬───────────────────────┘
+                       │
+                       │ REST APIs
+                       ▼
+┌──────────────────────────────────────────────┐
+│           Node.js + Express Backend          │
+│                                              │
+│  Authentication • Interview APIs             │
+│  Resume Processing • Evaluation • History    │
+└───────────────┬──────────────────────────────┘
+                │
+       ┌────────┼───────────────┐
+       │        │               │
+       ▼        ▼               ▼
+┌──────────┐ ┌──────────────┐ ┌──────────────┐
+│ MongoDB  │ │  Gemini AI   │ │ Resume/RAG   │
+│  Atlas   │ │              │ │ Processing   │
+│          │ │ Question     │ │              │
+│ Users    │ │ Generation   │ │ Resume Parser│
+│ Interviews││ Evaluation   │ │ Text Chunker │
+│ Embeddings││              │ │ Embeddings   │
+└─────┬────┘ └──────────────┘ │ Retrieval    │
+      │                        │ Vector Store │
+      │                        └──────┬───────┘
+      │                               │
+      └───────────────────────────────┘
+                                      │
+                                      ▼
+                              Relevant Resume
+                                  Context
+                                      │
+                                      ▼
+                                  Gemini AI
+                                      │
+                           ┌──────────┴──────────┐
+                           ▼                     ▼
+                   Personalized             AI Interview
+                    Questions                Evaluation
+                           │                     │
+                           └──────────┬──────────┘
+                                      ▼
+                              Interview Results
+                                      │
+                                      ▼
+                              MongoDB Persistence
+                                      │
+                                      ▼
+                          Dashboard + Profile
 # 🧠 RAG Architecture
 
 The resume personalization system follows this flow:
