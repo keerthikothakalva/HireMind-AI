@@ -28,8 +28,7 @@ function Interview() {
 
   const [error, setError] = useState("");
 
-  const [isListening, setIsListening] =
-    useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const [interimTranscript, setInterimTranscript] =
     useState("");
@@ -40,6 +39,8 @@ function Interview() {
     typeof window !== "undefined" &&
     ("SpeechRecognition" in window ||
       "webkitSpeechRecognition" in window);
+
+  // Validate interview data
   useEffect(() => {
     if (
       !role ||
@@ -58,6 +59,8 @@ function Interview() {
     interviewQuestions.length,
     navigate,
   ]);
+
+  // Speech Recognition
 
   useEffect(() => {
     if (!speechSupported) {
@@ -78,12 +81,11 @@ function Interview() {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
-    
+
     recognition.onstart = () => {
       setIsListening(true);
       setInterimTranscript("");
     };
-    // Speech result
 
     recognition.onresult = (event) => {
       let finalTranscript = "";
@@ -125,7 +127,6 @@ function Interview() {
       }
     };
 
-
     recognition.onerror = (event) => {
       console.error(
         "Speech recognition error:",
@@ -154,6 +155,7 @@ function Interview() {
     };
   }, [speechSupported]);
 
+  // Start Listening
   const startListening = () => {
     if (!speechSupported) {
       return;
@@ -166,14 +168,13 @@ function Interview() {
     try {
       recognitionRef.current.start();
     } catch {
-      // Browser throws if recognition is
-      // already running.
       console.log(
         "Speech recognition is already running."
       );
     }
   };
 
+  // Stop Listening
 
   const stopListening = () => {
     if (recognitionRef.current) {
@@ -188,17 +189,38 @@ function Interview() {
     setInterimTranscript("");
   };
 
+  // GET LOGGED-IN USER EMAIL
   const getUserEmail = () => {
+    
+    const storedEmail =
+      localStorage.getItem("userEmail");
+
+    if (
+      storedEmail &&
+      storedEmail.trim() &&
+      storedEmail.includes("@")
+    ) {
+      return storedEmail
+        .trim()
+        .toLowerCase();
+    }
+
+   
     const storedUser =
-      localStorage.getItem("userEmailS");
+      localStorage.getItem("hiremindUser");
 
     if (!storedUser) {
       return "";
     }
 
-    if (storedUser.includes("@")) {
-      return storedUser.toLowerCase();
+    if (
+      storedUser.includes("@")
+    ) {
+      return storedUser
+        .trim()
+        .toLowerCase();
     }
+
     try {
       const parsedUser =
         JSON.parse(storedUser);
@@ -207,11 +229,19 @@ function Interview() {
         parsedUser &&
         typeof parsedUser === "object"
       ) {
-        return (
+        const email =
           parsedUser.email ||
           parsedUser.userEmail ||
-          ""
-        ).toLowerCase();
+          "";
+
+        if (
+          typeof email === "string" &&
+          email.includes("@")
+        ) {
+          return email
+            .trim()
+            .toLowerCase();
+        }
       }
     } catch {
       // Stored value was not JSON.
@@ -222,9 +252,11 @@ function Interview() {
 
   const handleNext = async () => {
     const trimmedAnswer = answer.trim();
+
     if (!trimmedAnswer) {
       return;
     }
+
     stopListening();
 
     const updatedAnswers = [...answers];
@@ -240,6 +272,8 @@ function Interview() {
       currentQuestion ===
       interviewQuestions.length - 1;
 
+    // Move to next question
+
     if (!isLastQuestion) {
       setAnswer("");
 
@@ -251,50 +285,46 @@ function Interview() {
       return;
     }
 
+    // Final question -> submit evaluation
     try {
       setLoading(true);
       setError("");
 
       const userEmail = getUserEmail();
 
-      console.log(
-        "============="
-      );
-
+      console.log("===============");
       console.log(
         "Submitting interview evaluation..."
       );
-
       console.log("Role:", role);
       console.log(
         "Experience:",
         experience
       );
-
       console.log(
         "Questions:",
         interviewQuestions.length
       );
-
       console.log(
         "Answers:",
         updatedAnswers.length
       );
-
       console.log(
         "Resume text length:",
         resumeText.length
       );
-
       console.log(
         "User email:",
         userEmail
       );
+      console.log("===============");
 
-      console.log(
-        "================="
-      );
 
+      if (!userEmail) {
+        throw new Error(
+          "User email not found. Please log in again before starting the interview."
+        );
+      }
 
       const response = await fetch(
         "https://hiremind-ai-yqdp.onrender.com/api/interview/evaluate",
@@ -338,7 +368,6 @@ function Interview() {
         data
       );
 
-
       if (!response.ok) {
         throw new Error(
           data?.message ||
@@ -360,6 +389,18 @@ function Interview() {
         "Interview ID:",
         data.interviewId
       );
+
+      if (data.interviewId) {
+        console.log(
+          "Interview saved to MongoDB:",
+          data.interviewId
+        );
+      } else {
+        console.warn(
+          "WARNING: Backend did not return an interviewId."
+        );
+      }
+
       navigate("/results", {
         state: {
           results: data.results,
@@ -519,6 +560,7 @@ function Interview() {
     ((currentQuestion + 1) /
       interviewQuestions.length) *
     100;
+
   const currentQuestionText =
     interviewQuestions[currentQuestion];
 
@@ -526,6 +568,7 @@ function Interview() {
     <main className="interview-page">
 
       <div className="interview-container">
+
         <div className="interview-header">
 
           <div>
@@ -695,7 +738,8 @@ function Interview() {
                 disabled={
                   !answer.trim() ||
                   loading
-                }>
+                }
+              >
 
                 {currentQuestion ===
                 interviewQuestions.length - 1
